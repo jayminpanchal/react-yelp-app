@@ -1,16 +1,37 @@
 import React, {useState, useEffect} from 'react';
 import GoogleMapReact from 'google-map-react';
 import {useApolloClient} from '@apollo/react-hooks';
+import useMediaQuery from '@material-ui/core/useMediaQuery';
+import {useTheme, makeStyles} from '@material-ui/core/styles';
 import Button from '@material-ui/core/Button';
 import Snackbar from '@material-ui/core/Snackbar';
 import IconButton from '@material-ui/core/IconButton';
 import CloseIcon from '@material-ui/icons/Close';
+import Switch from '@material-ui/core/Switch';
+import Grid from '@material-ui/core/Grid';
+import FormGroup from '@material-ui/core/FormGroup';
+import FormControlLabel from '@material-ui/core/FormControlLabel';
 
 import AutoComplete from './components/AutoComplete';
 import Places from './components/Places';
 import './App.css';
 import {GET_RESTAURANTS} from "./graphql/query";
 import Marker from "./components/Marker";
+
+const useStyles = makeStyles(theme => ({
+    searchContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        zIndex: 9,
+        [theme.breakpoints.down('sm')]: {
+            position: 'relative',
+            backgroundColor: '#18cddd',
+            paddingBottom: '20px'
+        },
+    },
+}));
 
 function App() {
     const [center, setCenter] = useState(null);
@@ -20,6 +41,7 @@ function App() {
     const [places, setPlaces] = useState([]);
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [snackBarOpen, setSnackBarOpen] = useState(false);
+    const [showOnMap, setShowOnMap] = useState(false);
     const apolloClient = useApolloClient();
 
     useEffect(() => {
@@ -30,6 +52,32 @@ function App() {
             error => console.log(error)
         );
     });
+
+    const useCurrentLocation = () => {
+        console.log("current location");
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                console.log("position", position);
+                setCenter({lat: position.coords.latitude, lng: position.coords.longitude});
+                fetchData(position.coords.latitude, position.coords.longitude);
+            },
+            error => console.log(error)
+        );
+    };
+
+    const fetchData = async (latitude, longitude) => {
+        const {data} = await apolloClient.query({
+            query: GET_RESTAURANTS,
+            variables: {
+                term: 'restaurants',
+                latitude: latitude,
+                longitude: longitude
+            },
+        });
+        setPlaces(data.search.business);
+        if (data.search.business.length === 0)
+            setSnackBarOpen(true);
+    };
 
     const handleClose = (event, reason) => {
         if (reason === 'clickaway') {
@@ -42,27 +90,43 @@ function App() {
         setSelectedPlace(key);
     };
 
+    const theme = useTheme();
+    const downMatches = useMediaQuery(theme.breakpoints.down('sm'));
+    const classes = useStyles();
+
     return center && (
         <div className="App">
-            {mapApiLoaded && <div className="searchContainer">
+            {mapApiLoaded && <div className={classes.searchContainer}>
                 <AutoComplete
                     map={mapInstance} mapApi={mapApi}
-                    onPlaceSelect={async (place) => {
+                    onPlaceSelect={(place) => {
                         console.log("place 1", place.geometry.location.lat(), place.geometry.location.lng())
-                        const {data} = await apolloClient.query({
-                            query: GET_RESTAURANTS,
-                            variables: {
-                                term: 'restaurants',
-                                latitude: place.geometry.location.lat(),
-                                longitude: place.geometry.location.lng()
-                            },
-                        });
-                        setPlaces(data.search.business);
-                        if (data.search.business.length === 0)
-                            setSnackBarOpen(true);
+                        fetchData(place.geometry.location.lat(), place.geometry.location.lng());
                     }}/>
+                {downMatches && <Grid container alignItems="center" justify="center">
+                    <Grid item xs={12}>
+                        <FormGroup>
+                            <FormControlLabel
+                                style={{alignItems: 'center', justifyContent: 'center'}}
+                                control={
+                                    <div>
+                                        <Button variant="contained" className={classes.button}
+                                                onClick={useCurrentLocation}>
+                                            Use My Location
+                                        </Button>
+                                        {places.length > 0 && <Switch
+                                            checked={showOnMap}
+                                            onChange={(e, checked) => setShowOnMap(checked)}
+                                            value={showOnMap}/>}
+                                    </div>
+                                }
+                                label={places.length > 0 && "Show On Map"}/>
+                        </FormGroup>
+                    </Grid>
+                </Grid>}
             </div>}
-            {places.length > 0 && <Places places={places}/>}
+            {places.length > 0 && !downMatches && <Places places={places}/>}
+            {places.length > 0 && downMatches && !showOnMap && <Places places={places}/>}
             <GoogleMapReact
                 onGoogleApiLoaded={({map, maps}) => {
                     console.log("google api loaded");

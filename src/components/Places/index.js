@@ -11,7 +11,12 @@ const useStyles = makeStyles(theme => ({
         top: 0,
         zIndex: 8,
         width: '100%',
-        maxWidth: '400px'
+        [theme.breakpoints.down('sm')]: {
+            position: 'relative',
+        },
+        [theme.breakpoints.up('sm')]: {
+            maxWidth: '400px',
+        },
     },
     paper: {
         height: '100vh',

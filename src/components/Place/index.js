@@ -9,7 +9,9 @@ import Box from '@material-ui/core/Box';
 const useStyles = makeStyles(theme => ({
     card: {
         padding: theme.spacing(3, 2),
-        borderRadius: 0
+        borderRadius: 0,
+        boxShadow: 'none',
+        borderBottom: '1px solid #ddd'
     },
     imageGrid: {
         padding: 0

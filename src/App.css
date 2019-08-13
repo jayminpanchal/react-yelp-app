@@ -8,19 +8,3 @@ html, body, #root {
     text-align: center;
     position: relative;
 }
-
-.searchContainer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 9;
-}
-
-.autoCompleteContainer {
-    position: relative;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    padding: 20px;
-}
