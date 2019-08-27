@@ -11,6 +11,7 @@ import Switch from '@material-ui/core/Switch';
 import Grid from '@material-ui/core/Grid';
 import FormGroup from '@material-ui/core/FormGroup';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
+import CircularProgress from '@material-ui/core/CircularProgress';
 
 import AutoComplete from './components/AutoComplete';
 import Places from './components/Places';
@@ -31,6 +32,20 @@ const useStyles = makeStyles(theme => ({
             paddingBottom: '20px'
         },
     },
+    loaderContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        zIndex: 99,
+        display: 'flex',
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.5)'
+    }
 }));
 
 function App() {
@@ -42,6 +57,7 @@ function App() {
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [snackBarOpen, setSnackBarOpen] = useState(false);
     const [showOnMap, setShowOnMap] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const apolloClient = useApolloClient();
 
     useEffect(() => {
@@ -54,7 +70,6 @@ function App() {
     });
 
     const useCurrentLocation = () => {
-        console.log("current location");
         navigator.geolocation.getCurrentPosition(
             position => {
                 console.log("position", position);
@@ -66,6 +81,7 @@ function App() {
     };
 
     const fetchData = async (latitude, longitude) => {
+        setIsLoading(true);
         const {data} = await apolloClient.query({
             query: GET_RESTAURANTS,
             variables: {
@@ -77,6 +93,7 @@ function App() {
         setPlaces(data.search.business);
         if (data.search.business.length === 0)
             setSnackBarOpen(true);
+        setIsLoading(false);
     };
 
     const handleClose = (event, reason) => {
@@ -90,12 +107,20 @@ function App() {
         setSelectedPlace(key);
     };
 
+    const onMapClick = (e) => {
+        setCenter({lat: e.lat, lng: e.lng});
+        fetchData(e.lat, e.lng);
+    };
+
     const theme = useTheme();
     const downMatches = useMediaQuery(theme.breakpoints.down('sm'));
     const classes = useStyles();
 
     return center && (
         <div className="App">
+            {isLoading && <div className={classes.loaderContainer}>
+                <CircularProgress/>
+            </div>}
             {mapApiLoaded && <div className={classes.searchContainer}>
                 <AutoComplete
                     map={mapInstance} mapApi={mapApi}
@@ -137,6 +162,7 @@ function App() {
                 bootstrapURLKeys={{key: process.env.REACT_APP_MAP_KEY, libraries: 'places'}}
                 center={center}
                 defaultZoom={11}
+                onClick={onMapClick}
                 onChildClick={onChildClickCallback}>
                 {places.map(place =>
                     <Marker
